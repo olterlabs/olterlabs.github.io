@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KajaKeret – heti menü a keretedből</title>
+  <meta name="description" content="Költségkeret-alapú heti menütervező: 2 főre, 5 napra, valós bolti kiszerelésekkel és bevásárlólistával.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍲</text></svg>">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-inner">
+      <div class="brand"><span class="logo">🍲</span><div><h1>KajaKeret</h1><p>Heti menü a keretedből · 2 fő · 5 nap</p></div></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card budget">
+      <div class="budget-row">
+        <label for="budgetInput" class="label">Heti keret</label>
+        <div class="money-input"><input id="budgetInput" type="number" inputmode="numeric" min="4000" max="25000" step="100"><span>Ft</span></div>
+      </div>
+      <input id="budgetRange" type="range" min="4000" max="25000" step="100" aria-label="Heti keret csúszka">
+      <div class="presets" id="presets"></div>
+      <div class="mode-row">
+        <span class="label">Számítás</span>
+        <div class="seg" role="radiogroup" aria-label="Költségszámítás módja">
+          <button type="button" data-mode="basket" role="radio">Bolti kosárérték</button>
+          <button type="button" data-mode="portion" role="radio">Felhasznált adagköltség</button>
+        </div>
+      </div>
+      <p class="hint" id="modeHint"></p>
+    </section>
+
+    <section class="summary card" id="summary" aria-live="polite"></section>
+
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="menu">Heti menü</button>
+      <button role="tab" data-tab="shop">Bevásárlólista</button>
+      <button role="tab" data-tab="recipes">Receptek</button>
+      <button role="tab" data-tab="prices">Árak</button>
+    </nav>
+
+    <section class="tab" id="tab-menu">
+      <div class="toolbar">
+        <button class="btn primary" id="regenBtn">🎲 Új heti menü</button>
+      </div>
+      <ol class="days" id="days"></ol>
+    </section>
+
+    <section class="tab" id="tab-shop">
+      <p class="hint">Pipáld ki, ami <b>van otthon</b> – az ára azonnal lejön a végösszegből. A kamrakészletet a böngésző megjegyzi.</p>
+      <div id="shopList"></div>
+    </section>
+
+    <section class="tab" id="tab-recipes">
+      <div class="toolbar">
+        <input type="search" id="recipeSearch" placeholder="Keresés a receptek között…">
+        <button class="btn primary" id="newRecipeBtn">＋ Saját recept / import</button>
+      </div>
+      <div class="recipe-grid" id="recipeGrid"></div>
+    </section>
+
+    <section class="tab" id="tab-prices">
+      <p class="hint">Tájékoztató, becsült átlagárak (<span id="priceDate"></span>) egész bolti kiszerelésre. Írd át a saját boltod árára – a menü és a lista azonnal újraszámol. Éles verzióban ezek a <a href="https://arfigyelo.gvh.hu/" target="_blank" rel="noopener">GVH Online Árfigyelőből</a> frissülnének.</p>
+      <div class="toolbar"><button class="btn" id="resetPrices">Alapárak visszaállítása</button></div>
+      <div id="priceTable"></div>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    <p>A beépített receptek saját, minimalista megfogalmazások (KajaKeret). A Wikikönyvekből importált receptek a <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.hu" target="_blank" rel="noopener">CC BY-SA 4.0</a> licenc szerint, forrásmegjelöléssel szerepelnek. Az árak tájékoztató jellegűek.</p>
+  </footer>
+
+  <!-- Recept részletek -->
+  <dialog id="recipeDlg" class="dlg">
+    <form method="dialog" class="dlg-head"><h2 id="rdTitle"></h2><button class="x" aria-label="Bezárás">✕</button></form>
+    <div class="dlg-body" id="rdBody"></div>
+  </dialog>
+
+  <!-- Recept szerkesztő / import -->
+  <dialog id="editDlg" class="dlg wide">
+    <form method="dialog" class="dlg-head"><h2>Saját recept</h2><button class="x" aria-label="Bezárás">✕</button></form>
+    <div class="dlg-body">
+      <details class="import" id="importBox">
+        <summary>📥 Import a Wikikönyvekből (wikitext)</summary>
+        <div class="import-inner">
+          <label class="field">Oldal címe a Wikikönyvekben
+            <input id="wbTitle" placeholder="pl. Szakácskönyv/Magyar konyha/Paprikás krumpli">
+          </label>
+          <div class="row">
+            <button type="button" class="btn" id="wbFetch">Betöltés a Wikikönyvekből</button>
+            <span class="hint">…vagy másold be a nyers szöveget (<code>?action=raw</code>):</span>
+          </div>
+          <textarea id="wbRaw" rows="7" placeholder="== Hozzávalók ==&#10;* 50 dkg burgonya&#10;* 2 fej vöröshagyma&#10;…&#10;== Elkészítés ==&#10;# A hagymát…"></textarea>
+          <div class="row"><button type="button" class="btn primary" id="wbParse">Feldolgozás → 2 főre</button><span class="hint" id="wbMsg"></span></div>
+        </div>
+      </details>
+
+      <div class="grid2">
+        <label class="field">Recept neve<input id="edName" required></label>
+        <label class="field">Típus
+          <select id="edCat"></select>
+        </label>
+        <label class="field">Elkészítési idő (perc)<input id="edTime" type="number" min="5" step="5" value="40"></label>
+      </div>
+      <h3>Hozzávalók <small>2 főre, a bolti alapanyag-törzsből</small></h3>
+      <div id="edIngs"></div>
+      <div id="edUnmatched"></div>
+      <button type="button" class="btn" id="edAddIng">＋ Hozzávaló</button>
+      <label class="field">Elkészítés (soronként egy lépés)<textarea id="edSteps" rows="6"></textarea></label>
+      <div id="edSource" class="source"></div>
+      <label class="check"><input type="checkbox" id="edShare"> Megosztanám a közösségi recepttárban (a leírást saját szavaimmal írtam, vagy szabad licencű forrásból származik) <span class="soon">hamarosan</span></label>
+      <p class="hint" id="edCost"></p>
+      <div class="row end">
+        <button type="button" class="btn danger" id="edDelete" hidden>Törlés</button>
+        <button type="button" class="btn primary" id="edSave">Mentés</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
